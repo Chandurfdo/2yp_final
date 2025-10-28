@@ -16,7 +16,7 @@ export const AppConfig = {
      * - 900 (15 minutes)
      * - 1800 (30 minutes)
      */
-    timeoutSeconds: 10,
+    timeoutSeconds: 10000,
     
     /**
      * Whether to show warning before logout

@@ -1,105 +1,86 @@
+
 import React, { useState, useEffect } from 'react';
-// React - main library for creating UI components
-
-//import EditableNumber from './EditableNumber';
-//import SearchByEmail from "./SearchByEmail";
-
-const OrgMngWidget: React.FC = () => { //declares a react functional component
-  
-  //state variables
-  const [organizers, setOrganizers] = useState<any[]>([]); //holds the array of organizer objects fetched from backend
-
-  const [searchId, setSearchId] = useState<number | null>(null); //holdss the ID entered in text box
-
-  const [error, setError] = useState<string | null>(null); //stores error messages for dispaly
-
-  // Search-related state
-  //const [searchColumn, setSearchColumn] = useState<string>('organizer_name');
-  
-  //const [searchQuery, setSearchQuery] = useState<string>('');
+import { useNavigate } from "react-router-dom";
+import { useAuthCheck } from "../../utils/useAuthCheck";
 
 
 
 
-  // Editing state
+const OrgMngWidget: React.FC = () => {
+
+  const navigate = useNavigate(); // ✅ to handle redirection
+  const { handleTokenExpiration } = useAuthCheck(); // Use our custom hook
+  // State for storing all organizers
+  const [organizers, setOrganizers] = useState<any[]>([]);
+  // State for storing search input by ID
+  const [searchId, setSearchId] = useState<number | null>(null);
+  // State for storing error messages
+  const [error, setError] = useState<string | null>(null);
+
+  // Editing state: stores the organizer currently being edited
   const [editingOrganizer, setEditingOrganizer] = useState<any | null>(null);
-  //holds the organizer currently being edited
-
-  const [editForm, setEditForm] = useState<any>({ //stores the input fields into edit form
+  // Form state for editing an organizer
+  const [editForm, setEditForm] = useState<any>({
     fname: '',
     lname: '',
     email: '',
     contact_no: '',
     password: '',
   });
-  
-  useEffect(() => { //runs once after the first render
-    fetchOrganizers(); //call this function to fetch from db
-  }, []);
-
-/*
-  useEffect(() => {
-  const delayDebounce = setTimeout(() => {
-    fetchOrganizers();
-  }, 400); // waits 400ms after typing stops
-
-  return () => clearTimeout(delayDebounce);
-}, [searchQuery, searchColumn]);
-*/
 
 
-  
+useEffect(() => {
+  const token = localStorage.getItem("authToken");
+
+  //  Show message if token missing
+  if (!token) {
+    handleTokenExpiration();
+    return;
+  }
+
+  fetchOrganizers();
+}, [navigate]);
+
+
+  // Function to fetch all organizers from the backend
   const fetchOrganizers = async () => {
     try {
+      // Get auth token from localStorage (if your API requires authentication)
+      const token = localStorage.getItem('authToken');
       const response = await fetch('http://localhost:5000/organizers', {
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
-      const data = await response.json();  //parse JSON response
-      console.log('Fetched organizers data:', data); // Debug log
-      setOrganizers(data); //update organizer state
+
+      //  Handle invalid/expired token from backend
+      if (response.status === 401 || response.status === 403) {
+        // Show token expiration message without forcing logout
+        handleTokenExpiration();
+        return;
+      }
+
+      const data = await response.json();
+      console.log('Fetched organizers data:', data);
+      setOrganizers(data);
+
     } catch (error) {
       console.error('Fetch organizers error:', error);
       setError('Failed to load organizers. Please try again later.');
     }
   };
-  
 
-/*
-  const fetchOrganizers = async () => {
-  try {
-    const url = new URL('http://localhost:5000/organizers');
-    if (searchQuery.trim() !== '') {
-      url.searchParams.append('column', searchColumn);
-      url.searchParams.append('value', searchQuery);
-    }
-
-    const response = await fetch(url.toString());
-    const data = await response.json();
-    setOrganizers(data);
-  } catch (error) {
-    console.error('Fetch organizers error:', error);
-    setError('Failed to load organizers. Please try again later.');
-  }
-};
-*/
-
-
-
-
-  //handle delete when delete button clicked
+  // Function to delete an organizer by ID
   const handleDelete = async (id: number | string | undefined) => {
-    // Validate that we have a valid ID
+    // Validate that we have a proper ID
     if (!id || id === 'undefined' || id === 'null') {
       alert('Invalid organizer ID. Cannot delete this organizer.');
       return;
     }
 
-    // Convert to number if it's a string
+    // Convert string IDs to number
     const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
-    
+
     if (isNaN(numericId) || numericId <= 0) {
       alert('Invalid organizer ID. Cannot delete this organizer.');
       return;
@@ -107,22 +88,25 @@ const OrgMngWidget: React.FC = () => { //declares a react functional component
 
     if (window.confirm('Are you sure you want to delete this organizer?')) {
       try {
-
-        //get JWT token from local storage for authentication
-        const token = localStorage.getItem('authToken');
-
-        const response = await fetch(`http://localhost:5000/organizers/${id}`, {
+        const token = localStorage.getItem('authToken'); 
+        const response = await fetch(`http://localhost:5000/organizers/${numericId}`, {
           method: 'DELETE',
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}` // send JWT
-          },
+            Authorization: `Bearer ${token}` // attach token if required
+          }
         });
-
+        
+        // Check if token expired
+        if (response.status === 401 || response.status === 403) {
+          handleTokenExpiration();
+          return;
+        }
+        
         const result = await response.json();
         if (response.ok) {
           alert(result.message);
-          setOrganizers(organizers.filter((org) => org.organizer_ID || org.id || org.organizerId || org.organizer_id !== id));
+          // Remove deleted organizer from the list
+          setOrganizers(organizers.filter((org) => org.organizer_ID !== numericId));
         } else {
           alert(result.message || 'Failed to delete organizer. Please try again.');
         }
@@ -133,156 +117,189 @@ const OrgMngWidget: React.FC = () => { //declares a react functional component
     }
   };
 
-  
+  // Function to search organizer by ID
   const handleSearch = async () => {
     if (searchId !== null && searchId >= 1) {
       try {
+        const token = localStorage.getItem('authToken'); // optional token
         const response = await fetch(`http://localhost:5000/organizers/${searchId}`, {
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+            Authorization: `Bearer ${token}`
           }
         });
+        
+        // Check if token expired
+        if (response.status === 401 || response.status === 403) {
+          handleTokenExpiration();
+          return;
+        }
+        
         if (!response.ok) {
           setError('Organizer not found');
           return;
         }
         const data = await response.json();
-        setOrganizers([data]);
+        setOrganizers([data]); // Show only the searched organizer
       } catch (error) {
         setError('Failed to fetch organizer by ID.');
       }
     }
   };
-  
 
-  // Edit logic - when edit button is clicked
-  const handleEditClick = async (organizer: any) => {
-    const id = organizer.organizer_ID || organizer.id || organizer.organizerId || organizer.organizer_id;
-    if (!id) {
-      alert('Invalid organizer ID. Cannot edit this organizer.');
-      return;
-    }
-    
-    try {
-        // get the token from localStorage
-        const token = localStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/organizers/${id}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const data = await response.json();
-      setEditingOrganizer(data);
-      setEditForm({ // fill edit form with organizer's existing data
-        fname: data.fname || data.Fname || '',
-        lname: data.lname || data.Lname || '',
-        email: data.email || '',
-        contact_no: data.contact_no || '',
-        password: '',
-      });
-    } catch (error) {
-      alert('Failed to fetch organizer details.');
-    }
-  };
 
-  //when user type in edit form
-  const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditForm({ ...editForm, [e.target.name]: e.target.value });
-  };
-  
 
-  //when save button clicked
-  const handleEditFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); //prevent default form reload
-    if (!editingOrganizer) return;
-    
-    //the id of the organizer being edited
-    const id = editingOrganizer.organizer_ID || editingOrganizer.id || editingOrganizer.organizerId || editingOrganizer.organizer_id;
-    
-    
-    if (!id) {
-      alert('Invalid organizer ID. Cannot update this organizer.');
-      return;
-    }
- 
-    const token = localStorage.getItem('authToken'); // get token from localStorage
+  //  Function called when clicking "Edit" button
+const handleEditClick = async (organizer: any) => {
+  const id =
+    organizer.organizer_ID ||
+    organizer.id ||
+    organizer.organizerId ||
+    organizer.organizer_id;
 
-    
-    try {
-      // Map frontend field names to backend field names
-      const updateData = {
-        Fname: editForm.fname,
-        Lname: editForm.lname,
-        email: editForm.email,
-        contact_no: editForm.contact_no,
-        password: editForm.password,
-      };
-      
-      const response = await fetch(`http://localhost:5000/organizers/${id}`, {
-        method: 'PUT',
-        headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`, // add token
+  if (!id) {
+    alert("Invalid organizer ID. Cannot edit this organizer.");
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem("authToken");
+    const response = await fetch(`http://localhost:5000/organizers/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
       },
-        body: JSON.stringify(updateData),
-      });
-      const result = await response.json();
+    });
 
-      if (!response.ok) {
-      alert(result.message || 'Failed to update organizer.');
-      } else {
-      // Update frontend state only if update succeeded
-      setOrganizers((prev) => //take the previous state so that we can edit it safely
-        prev.map((org) => { //loops through each organizer in the previous list
-                            //create a new array where one organizer is replaced with one organizer updated
-
-          const orgId = org.organizer_ID || org.id || org.organizerId || org.organizer_id;
-          //take the organizer ID of the organizers from array
-
-          return orgId === id ? result.organizer : org;
-          //check if the currrent organizer ID is eqaul ro the edited ID
-          //if yes, replace it with responese from backend
-    
-        })
-      );
-      alert(result.message || 'Organizer updated!');
+    //  Check if token is invalid or expired
+    if (response.status === 401 || response.status === 403) {
+      // Show token expiration message without forcing logout
+      handleTokenExpiration();
+      return;
     }
-      
-    } catch (error) {
-      alert('Failed to update organizer.');
-    } finally{
-      // close the edit modal regardless of success or failure
-      setEditingOrganizer(null);
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch organizer details.");
     }
-  };
 
-  const handleEditCancel = () => {
-    setEditingOrganizer(null);
-  };
+    const data = await response.json();
+
+    // Prefill the edit form
+    setEditingOrganizer(data);
+    setEditForm({
+      fname: data.fname || data.Fname || "",
+      lname: data.lname || data.Lname || "",
+      email: data.email || "",
+      contact_no: data.contact_no || "",
+      password: "", // Password is blank initially
+    });
+  } catch (error) {
+    alert("Failed to fetch organizer details.");
+  }
+};
+
+
+
+//  Function to handle changes in the edit form
+const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  setEditForm({ ...editForm, [e.target.name]: e.target.value });
+};
+
+
+
+//  Function to submit the edit form
+const handleEditFormSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!editingOrganizer) return;
+
+  const id =
+    editingOrganizer.organizer_ID ||
+    editingOrganizer.id ||
+    editingOrganizer.organizerId ||
+    editingOrganizer.organizer_id;
+
+  if (!id) {
+    alert("Invalid organizer ID. Cannot update this organizer.");
+    return;
+  }
+
+  try {
+    // Prepare data to send to backend
+    const updateData = {
+      Fname: editForm.fname,
+      Lname: editForm.lname,
+      email: editForm.email,
+      contact_no: editForm.contact_no,
+      password: editForm.password,
+    };
+
+    const token = localStorage.getItem("authToken");
+    const response = await fetch(`http://localhost:5000/organizers/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(updateData),
+    });
+
+    //  Check if token is invalid or expired
+    if (response.status === 401 || response.status === 403) {
+      // Show token expiration message without forcing logout
+      handleTokenExpiration();
+      return;
+    }
+
+    if (!response.ok) {
+      throw new Error("Failed to update organizer.");
+    }
+
+    const result = await response.json();
+    alert(result.message || "Organizer updated successfully!");
+
+    // Update the local state so UI reflects the new changes
+    setOrganizers((prev) =>
+      prev.map((org) => {
+        const orgId =
+          org.organizer_ID ||
+          org.id ||
+          org.organizerId ||
+          org.organizer_id;
+        return orgId === id
+          ? {
+              ...org,
+              ...editForm,
+              organizer_name: `${editForm.fname} ${editForm.lname}`,
+            }
+          : org;
+      })
+    );
+
+    setEditingOrganizer(null); // close edit modal
+  } catch (error) {
+    alert("Failed to update organizer.");
+  }
+};
+
+
+
+//  Cancel editing
+const handleEditCancel = () => {
+  setEditingOrganizer(null);
+};
 
 
 
 
-  return (
+ return (
     <div>
       <h2 className="text-xl font-bold mb-4">Organizer Management</h2>
 
-
-      
-  
-
-
-
-      
       {/* Search Bar */}
-      <div className="mb-4"> 
+      <div className="mb-4">
         <input
           type="number"
           min={1}
           placeholder="Search by Organizer ID"
-          value={searchId ?? ''}    
+          value={searchId ?? ''}
           onChange={(e) => {
             const val = Number(e.target.value);
             setSearchId(val >= 1 ? val : null);
@@ -299,21 +316,6 @@ const OrgMngWidget: React.FC = () => { //declares a react functional component
       </div>
 
       {error && <p className="text-red-500">{error}</p>}
-
-      
-
-
-      
-
-
-
-
-
-
-
-
-
-
 
       {/* Edit Modal/Section */}
       {editingOrganizer && (
@@ -403,7 +405,6 @@ const OrgMngWidget: React.FC = () => { //declares a react functional component
               <th className="py-2 px-4 border-b text-left">Last Name</th>
               <th className="py-2 px-4 border-b text-left">Email</th>
               <th className="py-2 px-4 border-b text-left">Contact No</th>
-              <th className="py-2 px-4 border-b text-left">Last Edited</th>
               <th className="py-2 px-4 border-b text-left">Actions</th>
             </tr>
           </thead>
@@ -418,16 +419,6 @@ const OrgMngWidget: React.FC = () => { //declares a react functional component
                 <td>{org.lname ?? '-'}</td>
                 <td>{org.email ?? '-'}</td>
                 <td>{org.contact_no ?? '-'}</td>
-
-                <td>{org.edited_at ? new Date(org.edited_at).toLocaleString('en-LK', 
-                    {timeZone: 'Asia/Colombo',
-                    })
-                    : '—'}
-                </td>
-
-
-
-
                 <td className="py-2 px-4 border-b">
                   <button
                     onClick={() => handleEditClick(org)}
@@ -455,10 +446,10 @@ const OrgMngWidget: React.FC = () => { //declares a react functional component
           </tbody>
         </table>
       </div>
-
-
     </div>
   );
 };
 
 export default OrgMngWidget;
+ 
+

@@ -110,9 +110,9 @@ const login = async (req, res) => {
 
         // create a JWT token so the frontend can keep the user logged in
         const token = jwt.sign(
-            { id: user.organizer_ID, username: user.email }, // The payload above is also be Base64-encoded in the token
+            { id: user.organizer_id, username: user.email }, // The payload above is also be Base64-encoded in the token
             process.env.JWT_SECRET, // secret key from .env file
-            { expiresIn: '1h' } // token valid for 1 hour
+            { expiresIn: '6h' } // token valid for 1 hour
         );
         // this is the formate of the final token: (header.payload.signature)
         // header: { alg: "HS256", typ: "JWT" }
