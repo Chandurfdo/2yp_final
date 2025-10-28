@@ -13,6 +13,7 @@ import FeedbackPage from "./FeedbackPage";
 import ExportPage from "./ExportPage";
 import BuildingsPage from "./BuildingsPage";
 import EventsPage from "./EventsPage";
+import AlertsPage from "./AlertsPage";
 
 // Import Organizer management components
 import OrgMngWidget from "./OrgMngWidget";
@@ -72,6 +73,7 @@ function OrganizerDashBoard({ onLogout }: OrganizerDashBoardProps) {
             <Route path="export" element={<ExportPage />} />
             <Route path="buildings" element={<BuildingsPage />} />
             <Route path="events" element={<EventsPage />} />
+            <Route path="alerts" element={<AlertsPage />} />
 
             {/* Organizers routes */}
             <Route path="organizers" element={<OrgMngWidget />} />

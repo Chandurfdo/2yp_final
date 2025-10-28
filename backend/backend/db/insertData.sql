@@ -108,3 +108,15 @@ WHERE NOT EXISTS (
 		AND etm.exhibit_name = v.exhibit_name
 		AND etm.tag = v.tag
 );
+
+INSERT INTO Alerts (alert, sent_by)
+VALUES
+('System maintenance scheduled for tonight at 11:00 PM. Please save your work.', 1),
+('New booth registration deadline extended to next Friday.', 2),
+('Reminder: Update your exhibitor details before the upcoming event review.', 3),
+('Power interruption expected in Zone B for 15 minutes at 2:30 PM.', 1),
+('Emergency drill at the exhibition hall starting in 10 minutes. Please cooperate.', 4),
+('New visitor analytics report available on the Organizer Dashboard.', 2),
+('Check-in system will undergo an update at midnight.', 1),
+('Please verify your assigned staff for the event opening ceremony.', 3);
+

@@ -75,6 +75,19 @@ CREATE TABLE Admin (
     email VARCHAR(150) UNIQUE NOT NULL
 );
 
+--7. Alerts
+CREATE TABLE Alerts (
+    alert_ID SERIAL PRIMARY KEY,
+    alert_message TEXT NOT NULL,
+    sent_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo'),
+    sender_ID INT NOT NULL,
+    CONSTRAINT fk_alert_sender FOREIGN KEY (sender_ID)
+        REFERENCES Organizer(organizer_ID)
+        ON DELETE CASCADE
+);
+
+
+
 -- ==============================
 -- MANY-TO-MANY RELATIONSHIPS
 -- ==============================

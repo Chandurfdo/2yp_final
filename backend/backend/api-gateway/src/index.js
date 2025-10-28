@@ -52,6 +52,11 @@ app.use('/auths', createProxyMiddleware({
     pathRewrite: (path, req) => req.originalUrl.replace(/^\/auths/, '/auths')
 }));
 
+app.use('/alerts', verifyToken,createProxyMiddleware({
+    target: 'http://localhost:3001',
+    changeOrigin: true,
+    pathRewrite: (path, req) => req.originalUrl.replace(/^\/alerts/, '/alerts')
+}));
 
 
 // ---------------------------
