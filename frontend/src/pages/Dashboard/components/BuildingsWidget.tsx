@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuthCheck } from "../../../utils/useAuthCheck";
 import { Plus, ChevronDown, ChevronUp, Edit, Trash } from "lucide-react";
+import TagFilterWidget from "./TagFilterWidget";
 
 interface Building {
   id: string;
@@ -278,6 +279,9 @@ const BuildingsWidget: React.FC = () => {
 
   return (
     <div className="space-y-6">
+                            <div className="mb-6">
+  <TagFilterWidget />
+</div>
       <div className="flex justify-between items-center">
         <button
           onClick={() => setShowForm(true)}
