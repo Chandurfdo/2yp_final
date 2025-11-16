@@ -13,8 +13,7 @@ const approveOrganizer = async (req, res) => {
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'Organizer not found' });
         }
-
-    //const organizer = result.rows[0];    
+    
 
     // Send email to organizer
     await sendOrganizerApprovedEmail(result.rows[0]);

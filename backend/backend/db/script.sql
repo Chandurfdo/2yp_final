@@ -51,7 +51,8 @@ CREATE TABLE Organizer (
     email VARCHAR(150) UNIQUE NOT NULL,
     contact_no VARCHAR(20),
     password_hash VARCHAR(255) NOT NULL,
-    status VARCHAR(20) DEFAULT 'pending'
+    status VARCHAR(20) DEFAULT 'pending',
+    edited_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo')
 );
 
 -- 5. Events (linked to Organizer)
@@ -78,15 +79,13 @@ CREATE TABLE Admin (
 --7. Alerts
 CREATE TABLE Alerts (
     alert_ID SERIAL PRIMARY KEY,
-    alert_message TEXT NOT NULL,
+    alert TEXT NOT NULL,
     sent_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo'),
-    sender_ID INT NOT NULL,
-    CONSTRAINT fk_alert_sender FOREIGN KEY (sender_ID)
+    sent_by INT NOT NULL,
+    CONSTRAINT fk_alert_sender FOREIGN KEY (sent_by)
         REFERENCES Organizer(organizer_ID)
         ON DELETE CASCADE
 );
-
-
 
 -- ==============================
 -- MANY-TO-MANY RELATIONSHIPS

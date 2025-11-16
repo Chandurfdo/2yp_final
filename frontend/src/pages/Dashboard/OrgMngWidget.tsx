@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 // React - main library for creating UI components
+//use state - hook for state variables  
+//use effect - hook for side effects like data fetching
 
-//import EditableNumber from './EditableNumber';
-//import SearchByEmail from "./SearchByEmail";
-
-const OrgMngWidget: React.FC = () => { //declares a react functional component
+const OrgMngWidget: React.FC = () => { //declares a react functional component - to define components in React
   
   //state variables
   const [organizers, setOrganizers] = useState<any[]>([]); //holds the array of organizer objects fetched from backend
@@ -13,13 +12,7 @@ const OrgMngWidget: React.FC = () => { //declares a react functional component
 
   const [error, setError] = useState<string | null>(null); //stores error messages for dispaly
 
-  // Search-related state
-  //const [searchColumn, setSearchColumn] = useState<string>('organizer_name');
-  
-  //const [searchQuery, setSearchQuery] = useState<string>('');
-
-
-
+  const [loggedInUserEmail, setLoggedInUserEmail] = useState(''); //stores logged-in user's email
 
   // Editing state
   const [editingOrganizer, setEditingOrganizer] = useState<any | null>(null);
@@ -32,23 +25,58 @@ const OrgMngWidget: React.FC = () => { //declares a react functional component
     contact_no: '',
     password: '',
   });
+
+  // Validation state
+  const [validationErrors, setValidationErrors] = useState<any>({
+    email: '',
+    contact_no: ''
+  });
   
   useEffect(() => { //runs once after the first render
+
+    const getLoggedInUserEmail = (): string => {
+      try {
+        const authUser = localStorage.getItem('authUser');
+        if (authUser) {
+          const userObj = JSON.parse(authUser);
+          return userObj.email?.toLowerCase().trim() || '';
+        }
+      } catch (err) {
+        console.error("Error parsing logged-in user:", err);
+      }
+      return '';
+    };
+
+    const email = getLoggedInUserEmail();
+    setLoggedInUserEmail(email);
+
     fetchOrganizers(); //call this function to fetch from db
-  }, []);
+    
+  },[]);
 
-/*
-  useEffect(() => {
-  const delayDebounce = setTimeout(() => {
-    fetchOrganizers();
-  }, 400); // waits 400ms after typing stops
+  // Validation functions
+  const validateEmail = (email: string): string => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email.trim()) {
+      return 'Email is required';
+    }
+    if (!emailRegex.test(email)) {
+      return 'Please enter a valid email address';
+    }
+    return '';
+  };
 
-  return () => clearTimeout(delayDebounce);
-}, [searchQuery, searchColumn]);
-*/
+  const validateContactNumber = (contactNo: string): string => {
+    const contactRegex = /^\d{10}$/;
+    if (!contactNo.trim()) {
+      return 'Contact number is required';
+    }
+    if (!contactRegex.test(contactNo)) {
+      return 'Contact number must be exactly 10 digits';
+    }
+    return '';
+  };
 
-
-  
   const fetchOrganizers = async () => {
     try {
       const response = await fetch('http://localhost:5000/organizers', {
@@ -66,28 +94,6 @@ const OrgMngWidget: React.FC = () => { //declares a react functional component
     }
   };
   
-
-/*
-  const fetchOrganizers = async () => {
-  try {
-    const url = new URL('http://localhost:5000/organizers');
-    if (searchQuery.trim() !== '') {
-      url.searchParams.append('column', searchColumn);
-      url.searchParams.append('value', searchQuery);
-    }
-
-    const response = await fetch(url.toString());
-    const data = await response.json();
-    setOrganizers(data);
-  } catch (error) {
-    console.error('Fetch organizers error:', error);
-    setError('Failed to load organizers. Please try again later.');
-  }
-};
-*/
-
-
-
 
   //handle delete when delete button clicked
   const handleDelete = async (id: number | string | undefined) => {
@@ -182,6 +188,11 @@ const OrgMngWidget: React.FC = () => { //declares a react functional component
         contact_no: data.contact_no || '',
         password: '',
       });
+      // Clear validation errors when starting a new edit
+      setValidationErrors({
+        email: '',
+        contact_no: ''
+      });
     } catch (error) {
       alert('Failed to fetch organizer details.');
     }
@@ -189,7 +200,17 @@ const OrgMngWidget: React.FC = () => { //declares a react functional component
 
   //when user type in edit form
   const handleEditFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditForm({ ...editForm, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setEditForm({ ...editForm, [name]: value });
+
+    // Real-time validation
+    if (name === 'email') {
+      const emailError = validateEmail(value);
+      setValidationErrors((prev: any) => ({ ...prev, email: emailError }));
+    } else if (name === 'contact_no') {
+      const contactError = validateContactNumber(value);
+      setValidationErrors((prev: any) => ({ ...prev, contact_no: contactError }));
+    }
   };
   
 
@@ -197,6 +218,21 @@ const OrgMngWidget: React.FC = () => { //declares a react functional component
   const handleEditFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); //prevent default form reload
     if (!editingOrganizer) return;
+    
+    // Validate all fields before submission
+    const emailError = validateEmail(editForm.email);
+    const contactError = validateContactNumber(editForm.contact_no);
+    
+    setValidationErrors({
+      email: emailError,
+      contact_no: contactError
+    });
+
+    // Check if there are any validation errors
+    if (emailError || contactError) {
+      alert('Please fix the validation errors before submitting.');
+      return;
+    }
     
     //the id of the organizer being edited
     const id = editingOrganizer.organizer_ID || editingOrganizer.id || editingOrganizer.organizerId || editingOrganizer.organizer_id;
@@ -260,6 +296,10 @@ const OrgMngWidget: React.FC = () => { //declares a react functional component
 
   const handleEditCancel = () => {
     setEditingOrganizer(null);
+    setValidationErrors({
+      email: '',
+      contact_no: ''
+    });
   };
 
 
@@ -267,15 +307,9 @@ const OrgMngWidget: React.FC = () => { //declares a react functional component
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-4">Organizer Management</h2>
-
-
-      
+      <h2 className="text-xl font-bold mb-4">Organizer Management</h2>    
   
-
-
-
-      
+     
       {/* Search Bar */}
       <div className="mb-4"> 
         <input
@@ -299,20 +333,6 @@ const OrgMngWidget: React.FC = () => { //declares a react functional component
       </div>
 
       {error && <p className="text-red-500">{error}</p>}
-
-      
-
-
-      
-
-
-
-
-
-
-
-
-
 
 
       {/* Edit Modal/Section */}
@@ -345,21 +365,40 @@ const OrgMngWidget: React.FC = () => { //declares a react functional component
                 <label className="block font-medium mb-1">Email</label>
                 <input
                   name="email"
+                  type="email"
                   value={editForm.email}
                   onChange={handleEditFormChange}
-                  className="w-full border p-2 rounded"
+                  className={`w-full border p-2 rounded ${
+                    validationErrors.email ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   required
                 />
+                {validationErrors.email && (
+                  <p className="text-red-500 text-sm mt-1">{validationErrors.email}</p>
+                )}
               </div>
               <div>
                 <label className="block font-medium mb-1">Contact No</label>
                 <input
                   name="contact_no"
+                  type="tel"
                   value={editForm.contact_no}
                   onChange={handleEditFormChange}
-                  className="w-full border p-2 rounded"
+                  onInput={(e) => {
+                    // Only allow numeric input
+                    const target = e.target as HTMLInputElement;
+                    target.value = target.value.replace(/\D/g, '');
+                  }}
+                  className={`w-full border p-2 rounded ${
+                    validationErrors.contact_no ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="Enter 10-digit contact number"
+                  maxLength={10}
                   required
                 />
+                {validationErrors.contact_no && (
+                  <p className="text-red-500 text-sm mt-1">{validationErrors.contact_no}</p>
+                )}
               </div>
               <div>
                 <label className="block font-medium mb-1">Password</label>
@@ -382,7 +421,12 @@ const OrgMngWidget: React.FC = () => { //declares a react functional component
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded"
+                  disabled={validationErrors.email || validationErrors.contact_no}
+                  className={`px-4 py-2 rounded ${
+                    validationErrors.email || validationErrors.contact_no
+                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
                 >
                   Save
                 </button>
@@ -398,7 +442,7 @@ const OrgMngWidget: React.FC = () => { //declares a react functional component
           <thead className="bg-gray-50">
             <tr>
               <th className="py-2 px-4 border-b text-left">ID</th>
-              <th className="py-2 px-4 border-b text-left">Organizer Name</th>
+              
               <th className="py-2 px-4 border-b text-left">First Name</th>
               <th className="py-2 px-4 border-b text-left">Last Name</th>
               <th className="py-2 px-4 border-b text-left">Email</th>
@@ -410,10 +454,15 @@ const OrgMngWidget: React.FC = () => { //declares a react functional component
           <tbody>
             {organizers.map((org, idx) => {
               const id = org.organizer_ID || org.id || org.organizerId || org.organizer_id;
+              
+              // Check if current organizer is the logged-in organizer
+              
+              const isLoggedInOrganizer = org.email?.toLowerCase().trim() === loggedInUserEmail?.toLowerCase().trim();                    
+              
               return (
               <tr key={String(id ?? idx)}>
                 <td>{id ?? '-'}</td>
-                <td>{org.organizer_name ?? '-'}</td>
+                
                 <td>{org.fname ?? '-'}</td>
                 <td>{org.lname ?? '-'}</td>
                 <td>{org.email ?? '-'}</td>
@@ -425,29 +474,25 @@ const OrgMngWidget: React.FC = () => { //declares a react functional component
                     : '—'}
                 </td>
 
-
-
-
                 <td className="py-2 px-4 border-b">
+                  
+                  {/* Only enable Edit/Delete for logged-in organizer */}
                   <button
-                    onClick={() => handleEditClick(org)}
-                    className="text-blue-600 hover:underline"
+                  onClick={() => handleEditClick(org)}
+                  className={`text-blue-600 hover:underline ${!isLoggedInOrganizer ? "opacity-15 cursor-not-allowed" : ""}`}
+                  disabled={!isLoggedInOrganizer}
                   >
-                    Edit
+                  Edit
                   </button>
+
                   <button
-                    onClick={() => {
-                      console.log('Delete button clicked for organizer:', org);
-                      console.log('Organizer ID:', org.organizer_ID);
-                      // Try different possible field names for the ID
-                      const id = org.organizer_ID || org.id || org.organizerId || org.organizer_id;
-                      console.log('Using ID:', id);
-                      handleDelete(id);
-                    }}
-                    className="text-red-600 hover:underline ml-4"
+                  onClick={() => handleDelete(id)}
+                  className={`text-red-600 hover:underline ml-4 ${!isLoggedInOrganizer ? "opacity-15 cursor-not-allowed" : ""}`}
+                  disabled={!isLoggedInOrganizer}
                   >
-                    Delete
+                  Delete
                   </button>
+
                 </td>
               </tr>
               );

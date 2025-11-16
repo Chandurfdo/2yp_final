@@ -8,12 +8,15 @@ interface LoginPageProps {
   goToRegister: () => void;  // This will be used for navigation to the Register page
 }
 
+
+
 export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, goToRegister }) => {
   const [email,setEmail] = useState("");  // Email state
   const [password, setPassword] = useState("");  // Password state
   const [loading, setLoading] = useState(false);  // Loading state for the button
-  const [errorMessage, setErrorMessage] = useState("");  // Error message state
+  const [errorMessage, setErrorMessage] = useState("");  // Error message state 
   const navigate = useNavigate();
+
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();  // Prevent form submission from reloading the page
@@ -27,13 +30,24 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, goToRegister }) =
         password,
       });
 
+      console.log("Status received:", response.status);
+
+      const token = response.data.token;
+
+      const payloadBase64 = token.split('.')[1]; // get the payload part
+      const payloadJson = atob(payloadBase64);  // decode from Base64
+      const payload = JSON.parse(payloadJson);  // convert JSON string to object
+
+      const organizerId = payload.id;
+      localStorage.setItem("organizerId", organizerId);
+
+
       if (response.status === 200) {
         // On successful login, store the JWT token in localStorage
         localStorage.setItem("authToken", response.data.token);
-        localStorage.setItem("authUser", JSON.stringify({ email }));
+        console.log("JWT Token received from backend:", response.data.token);
 
-        //print the token to console for debugging
-        console.log("Login successful, token:", response.data.token);
+        localStorage.setItem("authUser", JSON.stringify({ email }));
 
         // Notify the parent component that login was successful
         // This will trigger the conditional rendering in AppDash.tsx
