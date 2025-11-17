@@ -23,8 +23,6 @@ CREATE TABLE Building (
     CONSTRAINT fk_building_zone FOREIGN KEY (zone_ID) REFERENCES Zone(zone_ID) ON DELETE CASCADE
 );
 
-
-
 -- 3. Exhibits
 CREATE TABLE Exhibits (
     exhibit_ID SERIAL PRIMARY KEY,
@@ -68,7 +66,6 @@ CREATE TABLE Events (
     CONSTRAINT chk_event_time CHECK (start_time < end_time)
 );
 
-
 -- 6. Admin
 CREATE TABLE Admin (
     admin_ID SERIAL PRIMARY KEY,
@@ -81,10 +78,7 @@ CREATE TABLE Alerts (
     alert_ID SERIAL PRIMARY KEY,
     alert TEXT NOT NULL,
     sent_at TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Colombo'),
-    sent_by INT NOT NULL,
-    CONSTRAINT fk_alert_sender FOREIGN KEY (sent_by)
-        REFERENCES Organizer(organizer_ID)
-        ON DELETE CASCADE
+    sent_by VARCHAR(100) NOT NULL
 );
 
 -- ==============================
